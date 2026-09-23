@@ -33,7 +33,16 @@ export async function checkSharing(browser){
   assert.equal(await page.locator('[data-power="warm"]').getAttribute('aria-pressed'),'true');
   await run();await page.locator('#share').click();assert.equal(await page.locator('#share-link').inputValue(),failedURL);
   await page.keyboard.press('Escape');await page.locator('[data-power="demand"]').click();assert.ok(await page.locator('#share').isDisabled());
-  await run();assert.ok(await page.locator('#share').isEnabled());await page.locator('#share').click();
+  await run();assert.ok(await page.locator('#share').isEnabled());
+  // Queue counters follow the selected replay moment; the note retains the run's peak.
+  await page.locator('#scrubber').fill('16');
+  assert.equal(await page.locator('#prep-wait').innerText(),'20 PDFs');assert.equal(await page.locator('#ocr-wait').innerText(),'0 PDFs');
+  await page.locator('#scrubber').fill('25');
+  assert.equal(await page.locator('#prep-wait').innerText(),'0 PDFs');assert.equal(await page.locator('#ocr-wait').innerText(),'20 PDFs');
+  await page.locator('#scrubber').fill('360');
+  assert.equal(await page.locator('#prep-wait').innerText(),'0 PDFs');assert.equal(await page.locator('#ocr-wait').innerText(),'0 PDFs');
+  assert.match(await page.locator('#queue-note').innerText(),/20 before layout and 20 before inference/);
+  await page.locator('#share').click();
   const passedURL=await page.locator('#share-link').inputValue();assert.equal(readChallenge(passedURL).result.passed,true);
   await page.locator('.share-post summary').click();await page.locator('#share-caption-copy').click();
   const caption=await page.evaluate(()=>navigator.clipboard.readText());assert.match(caption,/completed level 1/);assert.ok(caption.endsWith(passedURL));

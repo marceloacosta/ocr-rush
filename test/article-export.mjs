@@ -39,7 +39,8 @@ try{
  assert.equal(await page.locator('#paste-target h2').first().innerText(),'Level 1: Control the cost of occasional uploads');
  assert.ok(await page.locator('#paste-target strong').count()>0);
  const links=await page.locator('#paste-target a').evaluateAll(es=>es.map(a=>a.href));
- assert.equal(links.at(-1),'https://www.marcelops.com/ocr-rush/');
+ assert.ok(links.includes('https://www.marcelops.com/ocr-rush/'));
+ assert.deepEqual(links.slice(-2),['https://buildwithaws.substack.com/','https://linkedin.com/in/marceloacostacavalero']);
  assert.ok(links.every(link=>link.startsWith('https://')));
  await page.locator('#paste-target').evaluate(node=>node.remove());
  for(const width of [320,390,1100]){

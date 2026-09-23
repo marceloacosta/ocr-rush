@@ -65,3 +65,7 @@ The game uses simulated processing times and AWS reference prices in USD. The de
 Start with the receipt uploads and work up to the large import. Once you complete a level, share your result and invite someone to meet the same requirements for less.
 
 [**Play OCR Rush →**](https://www.marcelops.com/ocr-rush/)
+
+For questions or discussion, you can find me on [Build With AWS](https://buildwithaws.substack.com/) or [LinkedIn](https://linkedin.com/in/marceloacostacavalero). I regularly share updates about AI systems and AWS architecture patterns.
+
+Build something interesting with this, and then share what you learned!

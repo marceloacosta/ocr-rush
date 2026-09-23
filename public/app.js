@@ -1,5 +1,5 @@
 import {PROGRESS_KEY,LEVELS,readProgress,writeProgress,readChallenge,compareChallenge} from './game.js?v=review-2';
-import {openResultShare,downloadResultCard} from './sharing.js?v=review-2';
+import {openResultShare,downloadResultCard} from './sharing.js?v=clarity-1';
 import {CONTRACTS,DEFAULT,normalize,designKey,simulate,explain,capacity,PROFILE,usesS3,deliveryName,FRAME_SECONDS} from './model.js?v=review-2';
 import {AWS_MISSIONS,awsDesign,awsTakeaway,architectureContext} from './aws.js?v=review-2';
 import {money,duration,clockTime} from './pricing.js';
@@ -84,6 +84,7 @@ function renderFactory(frame){
  $('on-time').innerHTML=`${f.onTime} <small>/ ${current().arrivals.length-(current().bad?.length||0)} valid PDFs</small>`;
  $('spend').innerHTML=`${money(f.cost)} <small>/ ${money(current().budget)}</small>`;$('spend').classList.toggle('over',f.cost>current().budget);
  $('waiting').innerHTML=`${f.queue+f.prepQueue} <small>PDFs in queues</small>`;$('clock').innerHTML=`${clockTime(f.time)} <small>/ 60:00</small>`;$('scrubber').value=f.time/FRAME_SECONDS;
+ $('queue-note').textContent=active&&!running&&frame?`These counts show PDFs waiting at the selected replay time. Peak queues during this run: ${active.prepPeak.toLocaleString('en-US')} before layout and ${active.peak.toLocaleString('en-US')} before inference. Drag the timeline to inspect earlier moments.`:'These counts show PDFs waiting to start each stage at the selected replay time. PDFs already being processed are not included.';
  $('prep-wait').textContent=`${f.prepQueue.toLocaleString('en-US')} PDFs`;$('ocr-wait').textContent=`${f.queue.toLocaleString('en-US')} PDFs`;$('throughput').textContent=`${(cap.system*60).toFixed(0)} pages/min${cap.pending?` · ${cap.pending} pending`:''}`;
  let svg=`<defs><pattern id="floor" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#ccdaeb"/></pattern></defs><rect x="15" y="25" width="970" height="390" rx="28" fill="url(#floor)"/><rect x="${usesS3(config)?(config.queue==='sqs'?337:165):40}" y="76" width="${usesS3(config)?(config.queue==='sqs'?490:662):940}" height="330" rx="18" fill="#edf4ff" fill-opacity=".65" stroke="#91b3df" stroke-dasharray="7 5"/><text x="352" y="61" font-size="16" font-weight="600" fill="#0053b4">Amazon EKS · two GPU pools</text>`;
  const line=d=>`<path class="belt" d="${d}" fill="none" stroke="#9bb7d8" stroke-width="3"/>`;
