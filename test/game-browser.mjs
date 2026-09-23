@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {DEFAULT,simulate} from '../public/model.js';
+import {DEFAULT,simulate,VERSION} from '../public/model.js';
 import {challengeURL,writeProgress,PROGRESS_KEY} from '../public/game.js';
 export async function checkGame(browser){
  const context=await browser.newContext({viewport:{width:1440,height:1050},reducedMotion:'reduce',permissions:['clipboard-read','clipboard-write']}),errors=[];
@@ -40,7 +40,7 @@ export async function checkGame(browser){
  await publicContext.route('https://ocr-game.test/**',async route=>{const u=new URL(route.request().url()),r=await publicContext.request.get(origin+u.pathname+u.search);await route.fulfill({response:r});});
  try{
   await publicContext.addInitScript(()=>{Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true});Object.defineProperty(navigator,'share',{value:async data=>{window.__shared=data;},configurable:true});});
-  const p=await publicContext.newPage();await p.goto('https://ocr-game.test/');await p.locator('#start').click();await p.locator('[data-power="demand"]').click();await p.locator('#run').click();await p.waitForFunction(()=>!document.getElementById('run').disabled);await p.locator('#share').click();const caption=await p.locator('#share-caption').inputValue();assert.match(caption,/https:\/\/ocr-game\.test\/\?contract=quiet&v=4&design=/);await p.locator('#share-native').click();const data=await p.evaluate(()=>window.__shared);assert.ok(data.url.includes('design='));assert.match(data.text,/completed level 1/);
+  const p=await publicContext.newPage();await p.goto('https://ocr-game.test/');await p.locator('#start').click();await p.locator('[data-power="demand"]').click();await p.locator('#run').click();await p.waitForFunction(()=>!document.getElementById('run').disabled);await p.locator('#share').click();const caption=await p.locator('#share-caption').inputValue();assert.ok(caption.includes(`https://ocr-game.test/?contract=quiet&v=${VERSION}&design=`));await p.locator('#share-native').click();const data=await p.evaluate(()=>window.__shared);assert.ok(data.url.includes('design='));assert.match(data.text,/completed level 1/);
  }finally{await publicContext.close();}
  console.log('PASS: game onboarding, six learning levels, earned completion, saved progress, local caption/image sharing, reproducible challenges, public share fallback, metadata and mobile layouts.');
 }

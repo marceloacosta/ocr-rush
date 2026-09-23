@@ -1,6 +1,6 @@
-import {challengeURL,localPreview,shareText} from './game.js?v=share-flow-1';
-import {drawCard,cardBlob} from './cards.js?v=share-flow-1';
-import {CONTRACTS} from './model.js';
+import {challengeURL,localPreview,shareText} from './game.js?v=review-2';
+import {drawCard,cardBlob} from './cards.js?v=review-2';
+import {CONTRACTS} from './model.js?v=review-2';
 import {money} from './pricing.js';
 
 const $=id=>document.getElementById(id);

@@ -1,4 +1,4 @@
-import {CONTRACTS,VERSION,normalize,simulate} from './model.js';
+import {CONTRACTS,VERSION,normalize,simulate} from './model.js?v=review-2';
 import {money} from './pricing.js';
 export const PROGRESS_KEY=`ocr-rush-progress-v${VERSION}`;
 export const LEVELS=[
@@ -11,7 +11,7 @@ export const LEVELS=[
 ];
 export function readProgress(raw){
  try{
-  const data=JSON.parse(raw);if(data?.version!==VERSION||!Array.isArray(data.best)||data.best.length!==CONTRACTS.length)return null;
+  const data=JSON.parse(raw);if(![4,VERSION].includes(data?.version)||!Array.isArray(data.best)||data.best.length!==CONTRACTS.length)return null;
   const best=data.best.map((config,i)=>{if(!config||typeof config!=='object'||Array.isArray(config))return null;const r=simulate(normalize(config),i);return r.passed?r:null;});
   const stage=Number.isInteger(data.stage)&&data.stage>=0&&data.stage<CONTRACTS.length?data.stage:0;
   return {best,stage,config:normalize(data.config)};
@@ -25,14 +25,15 @@ export function challengeURL(base,result){
 }
 export function readChallenge(base){
  const url=new URL(base),raw=url.searchParams.get('design');if(!raw)return {result:null,error:null};
- if(url.searchParams.get('v')!==String(VERSION))return {result:null,error:'This challenge uses a different version of the simulation. You can still play the level, but its previous cost is not comparable.'};
+ const version=Number(url.searchParams.get('v'));
+ if(![4,VERSION].includes(version))return {result:null,error:'This challenge uses a different version of the simulation. You can still play the level, but its previous cost is not comparable.'};
  try{
   if(raw.length>600)throw Error('oversized');const parsed=JSON.parse(raw),stage=CONTRACTS.findIndex(c=>c.id===url.searchParams.get('contract'));
   if(stage<0||!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('invalid');
   const config=normalize(parsed);
   if(Object.keys(config).some(k=>parsed[k]!==config[k])||Object.keys(parsed).length!==Object.keys(config).length)throw Error('invalid');
   const result=simulate(config,stage);
-  return {result,stage,error:null};
+  return {result,stage,error:null,updated:version!==VERSION};
  }catch{return {result:null,error:'This shared design could not be reproduced. You can still play the level from its starting configuration.'};}
 }
 export const localPreview=base=>['localhost','127.0.0.1','[::1]'].includes(new URL(base).hostname);

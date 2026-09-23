@@ -1,4 +1,4 @@
-import {CONTRACTS,deliveryName} from './model.js';
+import {CONTRACTS,deliveryName} from './model.js?v=review-2';
 import {money} from './pricing.js';
 const FONT='"Space Grotesk",system-ui,sans-serif';
 function rounded(ctx,x,y,w,h,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}

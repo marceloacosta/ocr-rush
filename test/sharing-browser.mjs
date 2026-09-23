@@ -61,6 +61,12 @@ export async function checkSharing(browser){
   await page.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw new DOMException('Blocked','NotAllowedError');};});
   await page.locator('#share-copy').click();assert.match(await page.locator('#share-status').innerText(),/text is selected/);
   assert.equal(await page.locator('#share-link').evaluate(el=>el.selectionEnd-el.selectionStart),passedURL.length);
+  const oldLink=new URL(failedURL);oldLink.searchParams.set('v','4');
+  await enter(oldLink.href);assert.match(await page.locator('#challenge-target').innerText(),/failure rules were corrected/);
+  // Previously completed levels are retained only if they pass under the new rules.
+  await page.evaluate(({key,value})=>{localStorage.clear();localStorage.setItem(key,value);},{key:'ocr-rush-progress-v4',value:JSON.stringify({version:4,best:[saved.config,null,null,null,null,null],stage:0,config:saved.config})});
+  await enter(base);assert.match(await page.locator('#progress-summary').innerText(),/1 of 6/);
+  assert.equal(await page.locator('[data-power="demand"]').getAttribute('aria-pressed'),'true');
   // Local previews produce public URLs that work on a recipient's device.
   await enter('http://127.0.0.1:4174/');await run();await page.locator('#share').click();
   assert.ok((await page.locator('#share-link').inputValue()).startsWith(base));

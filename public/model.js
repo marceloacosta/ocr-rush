@@ -1,5 +1,5 @@
 import {PRICING as P,money,duration} from './pricing.js';
-export const VERSION=4,SHIFT_SECONDS=3600,FRAME_SECONDS=10;
+export const VERSION=5,SHIFT_SECONDS=3600,FRAME_SECONDS=10;
 const STEP=.5;
 // Planning inputs, not measured performance of the named AWS instance/model.
 export const PROFILE={tokensPerSecond:360,streamTokensPerSecond:40,layoutBoot:90,inferenceBoot:240,cooldown:300,layoutConcurrency:8,prefetchPerLayout:256,visibility:120,heartbeat:30,scheduleStart:360,scheduleEnd:2100};
@@ -7,9 +7,9 @@ const arrivals=(count,start,span)=>Array.from({length:count},(_,i)=>start+Math.f
 export const CONTRACTS=[
  {id:'quiet',name:'Reduce the cost of processing 60 receipts',short:'Receipt uploads',label:'SCENARIO 1: OCCASIONAL UPLOADS',brief:'An accounting team uploads three groups of 20 one-page receipts during the hour. They need the extracted data within five minutes of each upload. Start with the Redis-based application and one GPU for each processing stage. Run it once, then compare keeping the GPUs ready with shutting them down between uploads.',budget:3.8,deadline:300,pages:1,tokens:80,layoutRate:12,arrivals:[...arrivals(20,120,40),...arrivals(20,1200,40),...arrivals(20,2640,40)],reason:'The five-minute target is the accounting team’s requirement in this exercise. It includes waiting, startup and processing; it is not a measured AWS response time.',tip:'Keeping both GPUs ready meets the time target but exceeds the budget. The queue-activated variation shuts them down between uploads. It adds an external signal to wake inference, because vLLM cannot publish a wake-up metric while its server is stopped.'},
  {id:'rush',name:'Prepare capacity for 1,000 invoices arriving together',short:'Invoice upload',label:'SCENARIO 2: A SCHEDULED UPLOAD',brief:'A supplier sends 1,000 four-page invoices over two minutes, starting ten minutes into the run. The accounting system needs each result within eight minutes of its upload. You know when this upload will happen, so compare starting GPU nodes ahead of time with waiting until the invoices arrive. You can also increase the number of nodes that are allowed to launch.',budget:10,deadline:480,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(1000,600,120),reason:'The eight-minute target represents the supplier’s reconciliation requirement for this exercise. More invoices create queue wait even when each invoice needs only seconds of processing.',tip:'Try four inference nodes with concurrent requests and scheduled startup. Raise the available-node limit from the starting limit of two nodes to four. Then compare with startup triggered by the first upload.'},
- {id:'recovery',name:'Recover invoice processing after a worker stops',short:'Worker failure',label:'SCENARIO 3: INTERRUPTED WORK',brief:'The same 1,000-invoice upload is interrupted when an inference worker stops at minute 13. At minute 35, the client resubmits an invoice that has already finished. Compare the original Redis job handling with two variations: storing files in S3, and adding SQS to retry interrupted jobs. The accounting system must receive each result once.',budget:11,deadline:720,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(1000,600,120),fault:780,duplicateAt:2100,reason:'Allow twelve minutes from each original upload, including recovery. A retry does not restart the deadline. This scenario models a worker failure that the application cannot recover through its short request retries.',tip:'Moving files to S3 preserves them independently of Redis, but it does not recover removed queue entries. SQS adds job acknowledgements and retry after visibility expiry. Enable duplicate-result protection to handle the client’s repeated submission.'},
+ {id:'recovery',name:'Recover invoice processing after a worker stops',short:'Worker failure',label:'SCENARIO 3: INTERRUPTED WORK',brief:'The same 1,000-invoice upload is interrupted when a busy inference worker stops at or after minute 13. If the nodes are still starting then, the interruption waits until one begins processing documents. At minute 35, the client resubmits an invoice that has already finished. Compare the original Redis job handling with two variations: storing files in S3, and adding SQS to retry interrupted jobs. The accounting system must receive each result once.',budget:11,deadline:720,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(1000,600,120),fault:780,duplicateAt:2100,reason:'Allow twelve minutes from each original upload, including recovery. A retry does not restart the deadline. This scenario models a worker failure that the application cannot recover through its short request retries.',tip:'Moving files to S3 preserves them independently of Redis, but it does not recover removed queue entries. SQS adds job acknowledgements and retry after visibility expiry. Enable duplicate-result protection to handle the client’s repeated submission.'},
  {id:'large',name:'Find what slows down 200 scanned reports',short:'Scanned reports',label:'SCENARIO 4: SLOW PAGE PREPARATION',brief:'An archive team uploads 200 reports with 80 scanned pages each. Before text extraction can begin, the layout workers must render the pages and identify their text and table regions. These scans need more preparation than the invoices. Compare adding layout GPUs with adding inference GPUs, and use the two queue counts to see which stage is limiting delivery.',budget:20,deadline:2700,pages:80,tokens:200,layoutRate:2,arrivals:arrivals(200,600,120),reason:'Each report must finish within 45 minutes of upload so the archive team can use its extracted contents during this exercise. All 80 pages must finish before a report counts as delivered.',tip:'Keep four inference nodes with concurrent requests and scheduled startup. Compare one layout node with four. If files wait before layout while inference has little work, extra inference capacity will not solve the delay.'},
- {id:'poison',name:'Set aside two invalid PDFs while processing the rest',short:'Invalid PDFs',label:'SCENARIO 5: FILES THAT KEEP FAILING',brief:'A new upload contains 1,000 four-page PDFs, but two files fail every parsing attempt. The other 998 files must continue through the system. Compare how the original Redis worker records failures with how the SQS variation retries them. Configure a separate queue for repeated failures so the operations team can inspect those files later.',budget:10,deadline:600,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(1000,600,120),bad:[4,15],reason:'The valid files have a ten-minute delivery target. The two invalid inputs must be retained in the separate error queue; recording an error or isolating a file does not count as successful extraction.',tip:'With SQS selected, enable the dead-letter queue after two failed attempts. Without that stopping rule, the same invalid files keep returning and using compute. Four scheduled inference nodes and one layout node are sufficient under this planning profile.'},
+ {id:'poison',name:'Set aside two invalid PDFs while processing the rest',short:'Invalid PDFs',label:'SCENARIO 5: FILES THAT KEEP FAILING',brief:'A new upload contains 1,000 four-page PDFs, but two files fail every parsing attempt. The other 998 files must continue through the system. Compare recorded Redis errors with SQS retries. This exercise processes failures per file; a worker that processes documents in batches can also fail valid files in the same batch. Configure a separate queue for repeated failures so the operations team can inspect those files later.',budget:10,deadline:600,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(1000,600,120),bad:[4,15],reason:'The valid files have a ten-minute delivery target. The two invalid inputs must be retained in the separate error queue; recording an error or isolating a file does not count as successful extraction.',tip:'With SQS selected, enable the dead-letter queue after two failed attempts. Without that stopping rule, the same invalid files keep returning and using compute. Four scheduled inference nodes and one layout node are sufficient under this planning profile.'},
  {id:'scale',name:'Process 10,000 PDFs when GPU capacity is limited',short:'Bulk import',label:'SCENARIO 6: A LARGER IMPORT',brief:'A document migration uploads 10,000 four-page PDFs over twenty minutes. Every result must be available before the hour ends. Requesting more workers will not help if their nodes cannot launch. Compare four available inference nodes with eight, and check that layout can supply enough prepared pages to keep them working.',budget:34,deadline:3000,pages:4,tokens:200,layoutRate:12,arrivals:arrivals(10000,300,1200),reason:'This exercise requires every PDF within fifty minutes of its upload and the entire import within the hour. The eight-node option extends the original deployment; it assumes the node-group limits, regional quota and instance availability have been addressed.',tip:'Try eight requested inference nodes, concurrent requests and two layout nodes. First run with only four inference nodes available, then allow all eight to launch. Compare unfinished work, queue time and the total cost.'}
 ];
 export const DEFAULT={workers:1,power:'warm',batch:16,queue:'redis',recovery:false,layout:1,dlq:false,quota:2};
@@ -27,7 +27,7 @@ export function simulate(input,contractIndex=0){
  const usage={gpuSeconds:cap.nodes*(config.power==='warm'?60:0),layoutSeconds:config.layout*(config.power==='warm'?60:0),busySeconds:0,bootSeconds:0,idleSeconds:0,layoutBusySeconds:0,layoutBootSeconds:0,layoutIdleSeconds:0,generatedTokens:0,sqsRequests:0,s3Puts:0,s3Gets:0,storageGBSeconds:0};
  const incoming=new Map();for(const j of jobs){if(!incoming.has(j.arrival))incoming.set(j.arrival,[]);incoming.get(j.arrival).push(j);}
  const unavailable={layout:[],inference:[]},closed={layout:config.power==='warm'?null:0,inference:config.power==='warm'?null:0};
- let failed=0,prepQueue=[],queue=[],duplicates=0,retries=0,peak=0,prepPeak=0,done=0,onTime=0,donePages=0,storedGB=0,quarantined=0,lost=0,arrivedSince=0,doneSince=0,leased=0,eventCursor=0,lastTokens=0;
+ let failed=0,prepQueue=[],queue=[],duplicates=0,retries=0,peak=0,prepPeak=0,done=0,onTime=0,donePages=0,storedGB=0,quarantined=0,lost=0,arrivedSince=0,doneSince=0,leased=0,eventCursor=0,lastTokens=0,faultTriggered=false;
  const trace=[],events=[],published=new Set(),pendingRetries=new Set(),held=new Set();
  const emit=(time,kind,text)=>events.push({time,kind,text});
  const request=(n=1)=>{if(config.queue==='sqs')usage.sqsRequests+=n;};
@@ -47,7 +47,7 @@ export function simulate(input,contractIndex=0){
  function release(j){if(held.delete(j))leased--;}
  function fail(j,t){release(j);if(config.queue==='sqs'){transition(j,'retry',t);j.retryAt=Math.max(t+STEP,j.lease);pendingRetries.add(j);retries++;}else{transition(j,j.bad?'failed':'stranded',t);if(typeof j.id==='number'){if(j.bad)failed++;else lost++;}}}
  function finish(j,t){
-  release(j);if(j.bad){emit(t,'error',`PDF ${j.logicalId+1} cannot be parsed (attempt ${j.attempts}).`);fail(j,t);return;}
+  release(j);
   transition(j,'done',t);if(usesS3(config))usage.s3Puts++;request();
   if(published.has(j.logicalId)){if(!config.recovery){duplicates++;emit(t,'duplicate','Another result published for the same PDF.');}return;}
   published.add(j.logicalId);j.finish=t;done++;doneSince++;donePages+=j.pages;if(t<=j.deadline)onTime++;if(usesS3(config))storedGB+=j.pages*.02/1024;
@@ -72,18 +72,12 @@ export function simulate(input,contractIndex=0){
    if(n.state==='boot'&&t>=n.ready){n.state='idle';n.idleSince=t;emit(t,'ready',`${n.tier==='layout'?'T4 layout':'L40S inference'} node ${n.id+1} ready.`);}
    if(n.state==='busy'){
     const completed=n.tasks.filter(j=>j.remaining<1e-7);n.tasks=n.tasks.filter(j=>j.remaining>=1e-7);
-    for(const j of completed){if(n.tier==='layout'){transition(j,'queued',t);queue.push(j);}else finish(j,t);}
+    for(const j of completed){if(n.tier==='layout'){if(j.bad){emit(t,'error',`PDF ${j.logicalId+1} cannot be parsed during page preparation (attempt ${j.attempts}).`);fail(j,t);}else{transition(j,'queued',t);queue.push(j);}}else finish(j,t);}
     if(!n.tasks.length){n.state='idle';n.idleSince=t;}
    }
   }
   availability(t);
   for(const j of incoming.get(t)||[]){transition(j,'prepQueue',t);prepQueue.push(j);if(usesS3(config)){usage.s3Puts++;storedGB+=j.pages/1024;}request();arrivedSince++;}
-  if(t===contract.fault){
-   const w=workers.find(n=>n.tasks.length)||workers.find(n=>n.state!=='pending'),interrupted=[...w.tasks];w.tasks=[];
-   if(w.sessionStart===null)boot(w,t);else{w.state='boot';w.ready=t+PROFILE.inferenceBoot;}
-   emit(t,'fault',`Inference GPU ${w.id+1} failed with ${interrupted.length} PDFs in flight. Replacement startup: ${PROFILE.inferenceBoot} s.`);
-   for(const j of interrupted)fail(j,t);availability(t);
-  }
   if(t===contract.duplicateAt){
    request();emit(t,'duplicate','PDF 1 resubmitted with the same stable job ID.');
    if(config.recovery&&published.has(0)){usage.s3Gets++;request(2);emit(t,'safe','Existing output found; duplicate job skipped.');}
@@ -99,10 +93,20 @@ export function simulate(input,contractIndex=0){
     const n=pool.filter(n=>(n.state==='idle'||n.state==='busy')&&n.tasks.length<slots).sort((a,b)=>a.tasks.length-b.tasks.length)[0];if(!n)break;
     const j=waiting.shift();transition(j,status,t);n.tasks.push(j);n.state='busy';
     if(status==='layout'){j.attempts++;j.lease=t+PROFILE.visibility;held.add(j);leased++;request();if(usesS3(config))usage.s3Gets+=1+(config.recovery?1:0);j.remaining=j.pages;}
-    else j.remaining=j.bad?400:j.pages*contract.tokens;
+    else j.remaining=j.pages*contract.tokens;
    }
   }
   dispatch(layouts,prepQueue,PROFILE.layoutConcurrency,'layout');dispatch(workers,queue,config.batch,'working');
+  // Arm the interruption at minute 13, but only stop a worker with live work.
+  // Cold or pending capacity cannot sidestep the recovery exercise.
+  if(!faultTriggered&&contract.fault!==undefined&&t>=contract.fault){
+   const w=workers.filter(n=>n.state==='busy'&&n.tasks.length).sort((a,b)=>b.tasks.length-a.tasks.length||a.id-b.id)[0];
+   if(w){
+    faultTriggered=true;const interrupted=[...w.tasks];w.tasks=[];w.state='boot';w.ready=t+PROFILE.inferenceBoot;
+    emit(t,'fault',`Inference GPU ${w.id+1} failed with ${interrupted.length} PDFs in flight. Replacement startup: ${PROFILE.inferenceBoot} s.`);
+    for(const j of interrupted)fail(j,t);availability(t);
+   }
+  }
   if(config.queue==='sqs'&&t%PROFILE.heartbeat===0){for(const j of held){j.lease=t+PROFILE.visibility;request();}}
   if(t<SHIFT_SECONDS&&t%20===0)request(config.layout);
   for(const n of nodes){if(n.state==='idle'&&config.power!=='warm'&&!(config.power==='scheduled'&&scheduled)&&!work&&t-n.idleSince>=PROFILE.cooldown){n.state='sleep';n.sessionStart=null;}}

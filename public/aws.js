@@ -1,5 +1,5 @@
 import {money,duration} from './pricing.js';
-import {usesS3} from './model.js';
+import {usesS3} from './model.js?v=review-2';
 const repo='https://github.com/chris-reigner/production-ocr-course/blob/7fe237f77934a1371308916c55a375239ae5c601';
 const scaling='https://docs.aws.amazon.com/solutions/event-driven-application-autoscaling-with-keda-on-amazon-eks/';
 const nodes='https://docs.aws.amazon.com/eks/latest/best-practices/karpenter.html';
@@ -11,7 +11,7 @@ export const AWS_MISSIONS=[
  'An input file remaining in storage does not make an interrupted job run again. Compare the original Redis queue with S3 storage and SQS acknowledgements, then handle the client’s repeated submission.',
  'Both processing stages need enough capacity. Use the queue before layout and the queue of prepared files to decide where adding a GPU will reduce waiting.',
  'A retry is useful when a temporary failure goes away. These two files fail every time, so the SQS variation needs a stopping rule and a place to retain them for investigation.',
- 'The original Terraform configuration allows at most two inference nodes. This scenario explores increasing that limit, together with the regional quota and available instances needed to run a larger import.'
+ 'The exercise starts with a two-node inference limit, matching the reference Terraform configuration. Its alternative CLI setup permits four. Explore increasing capacity while accounting for node-group settings, regional quota and available instances.'
 ];
 export function architectureContext(c){
  const paragraphs=[`The starting AWS application receives uploads through a Rust API and stores document data, job state and results in Redis. A Python worker prepares pages on a T4 node and sends their regions to Qwen3.5-4B, served by vLLM on L40S. The client retrieves the result through the API. EFS holds shared model weights.`];
@@ -21,12 +21,12 @@ export function architectureContext(c){
  if(c.recovery)changes.push('The output handler now checks stable job IDs and uses conditional S3 writes to prevent duplicate results.');
  if(c.dlq)changes.push('Jobs that fail twice move to a dead-letter queue for inspection.');
  if(c.power==='demand')changes.push('You have added an external queue signal to wake both GPU pools and a node lifecycle policy to release idle EC2 capacity. The original vLLM metric alone cannot wake a stopped inference server.');
- if(c.power==='scheduled')changes.push('You have replaced the business-hours warming schedule with a window for this upload: start nodes at minute 6, keep them through minute 35, then finish outstanding work and shut down after cooldown.');
+ if(c.power==='scheduled')changes.push('You have replaced the business-hours warming schedule with a window for this upload: start nodes at minute 6, keep them through minute 35, then finish outstanding work and shut down after cooldown. This assumes an added EC2 node lifecycle controller; changing KEDA pod counts alone does not remove nodes.');
  if(c.batch===1)changes.push('You have restricted each inference node to one document stream, which reduces the amount of work that can share its throughput in this model.');
  if(c.workers>4)changes.push('You have also increased the inference replica limit beyond the starting maximum of four pods.');
  if(c.quota>2)changes.push(`You have raised the available inference-node limit from two to ${c.quota}. This assumes the node-group settings, regional quota and instance availability permit that capacity.`);
  if(!changes.length)changes.push('The selected services match the starting implementation. Keeping both GPU pools ready represents an hour within its business-hours warm period.');
- return `<h2>The starting AWS implementation and your changes</h2><p>${paragraphs[0]}</p><p id="design-differences">${changes.join(' ')}</p><p class="architecture-scope">Processing is simplified for the simulation. The reference worker collects up to four documents over 100 ms and processes regions concurrently. The request-sharing control below represents effective capacity; it does not reproduce that scheduler. Timings and limits are explained in the model assumptions.</p><a href="${repo}/client_rt_consumer/worker.py" target="_blank" rel="noopener">Read the worker implementation ↗</a>`;
+ return `<h2>The starting AWS implementation and your changes</h2><p>${paragraphs[0]}</p><p id="design-differences">${changes.join(' ')}</p><p class="architecture-scope">This game explores independently queued processing stages and isolates failures to individual PDFs. The reference worker instead collects up to four documents over 100 ms, waits for their entire parse call to finish, and can mark the batch failed if one file raises an error. The game’s separate queues and document streams represent a processing variation. Timings and limits are explained in the model assumptions.</p><a href="${repo}/client_rt_consumer/worker.py" target="_blank" rel="noopener">Read the worker implementation ↗</a>`;
 }
 export function awsDesign(service,c){
  if(service==='eks')return {title:'EKS runs the API and both processing stages.',body:`Your design requests ${c.layout} T4 layout nodes and ${c.workers} L40S inference nodes. KEDA uses Redis queue length to scale layout workers and vLLM waiting-request metrics to scale inference, with scheduled warming for both. This game lets you compare capacity and activation policies explicitly. EC2 node capacity must be provided separately from the pod count.`,url:repo+'/k8s/eks/apps/keda-scaler.yml',link:'Read the KEDA scaling configuration'};
@@ -37,7 +37,7 @@ export function awsDesign(service,c){
  return {
  warm:{title:'Keep the selected GPU nodes ready throughout this hour.',body:'One warm worker in each pool represents the starting design’s business-hours minimum. Additional nodes let you compare more reserved capacity. The displayed reference rates are about $1.51/hour for a T4 layout node and $3.76/hour for an L40S inference node. Idle time is billed, along with the persistent platform and GPU disks.',url:repo+'/k8s/eks/apps/keda-scaler.yml',link:'Read the business-hours warming schedule'},
  demand:{title:'Add queue activation and release idle EC2 nodes.',body:'This variation needs an external work signal for both GPU pools and a node autoscaler or equivalent lifecycle controller. It assumes 90 seconds to start layout and 240 seconds to start inference. After work clears, nodes shut down after 300 idle seconds. Removing pods alone does not stop EC2 charges; the platform base remains running.',url:nodes,link:'Read about EC2 node capacity for EKS'},
- scheduled:{title:'Prepare nodes for the known upload time.',body:'This scenario’s schedule starts both pools at minute 6. Layout is ready at minute 7.5 and inference at minute 10 under the planning assumptions. Capacity stays available through minute 35, then finishes outstanding jobs and cools down. The starting design uses weekday business-hours warming in Europe/Berlin.',url:repo+'/k8s/eks/apps/keda-scaler.yml',link:'Read the starting warming schedule'}
+ scheduled:{title:'Prepare nodes for the known upload time.',body:'This scenario’s schedule starts both pools at minute 6. Layout is ready at minute 7.5 and inference at minute 10 under the planning assumptions. Capacity stays available through minute 35, then finishes outstanding jobs and cools down. The starting design uses weekday business-hours warming. This game’s schedule assumes an added controller provisions and removes EC2 nodes as well as scaling pods.',url:repo+'/k8s/eks/apps/keda-scaler.yml',link:'Read the starting warming schedule'}
  }[c.power];
 }
 export function awsTakeaway(r){

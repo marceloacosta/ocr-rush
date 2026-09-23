@@ -9,8 +9,15 @@ test('a shared configuration reproduces its target without trusting URL-provided
  parsed.searchParams.set('cost','0.001');assert.equal(readChallenge(parsed).result.cost,success.cost);
 });
 test('bad, oversized and incompatible shared designs are rejected',()=>{
- const url=new URL(challengeURL('https://game.example/',success));url.searchParams.set('v',String(VERSION-1));assert.ok(readChallenge(url).error);url.searchParams.set('v',String(VERSION));
+ const url=new URL(challengeURL('https://game.example/',success));url.searchParams.set('v','3');assert.ok(readChallenge(url).error);url.searchParams.set('v',String(VERSION));
  for(const value of ['<script>', 'null','[]','x'.repeat(601),JSON.stringify({...success.config,workers:999})]){url.searchParams.set('design',value);assert.equal(readChallenge(url).result,null);assert.ok(readChallenge(url).error);}
+});
+test('previous shared designs survive the rules update while an invalid recovery win is removed',()=>{
+ const legacy={...DEFAULT,workers:8,power:'demand',quota:8,queue:'s3redis',recovery:true};
+ const url=new URL(challengeURL('https://game.example/',simulate(legacy,2)));url.searchParams.set('v','4');
+ const shared=readChallenge(url);assert.ok(shared.updated);assert.deepEqual(shared.result.config,legacy);assert.equal(shared.result.passed,false);
+ const stored={version:4,best:[success.config,null,legacy,null,null,null],stage:2,config:legacy};
+ const restored=readProgress(JSON.stringify(stored));assert.ok(restored.best[0].passed);assert.equal(restored.best[2],null);assert.deepEqual(restored.config,legacy);
 });
 test('failed attempts retain their configuration and outcome without becoming cost targets',()=>{
  const url=challengeURL('https://game.example/',failure),restored=readChallenge(url);

@@ -4,17 +4,17 @@ Run a service that reads PDFs and extracts their contents in OCR Rush, a free AW
 
 An invoice arrives as a PDF, but its contents need to end up in a spreadsheet or accounting system. Someone could open the file and copy the information by hand. A document-processing application can do that reading automatically: you upload the file, and it returns the text and tables for another program to use. Reading text from document images is called optical character recognition, or OCR.
 
-The Neural Maze has [a course that builds this kind of application and shows how to deploy it on AWS](https://theneuralmaze.substack.com/p/deploying-a-production-ocr-system). That AWS implementation is the starting point for the game I’ve built, OCR Rush. I recommend taking the course to learn how the application is put together, then using the game to practise running it under different workloads.
+The Neural Maze has [a course that builds this kind of application and shows how to deploy it on AWS](https://theneuralmaze.substack.com/p/deploying-a-production-ocr-system). I built OCR Rush around that application’s AWS services, with some changes that let you explore how it behaves. I recommend taking the course to learn how the application is put together, then using the game to practise running it under different workloads.
 
 Imagine a finance team relying on it to prepare invoices for payment. A few receipts arrive during the morning, then someone uploads a whole batch of invoices before a deadline. The team needs the extracted information in time to use it. Meanwhile, you’re paying for the computers that process the files, including the time they spend switched on with nothing to do.
 
 OCR Rush lets you try the decisions involved in running that service. Across six levels, you choose how much computing capacity to use, when to have it ready, and how the application should deal with interrupted work or damaged files. Then you run the workload and see which documents finished, how long they took and what your setup cost.
 
-There are two main processing stages to keep in mind. First, the application prepares the PDF pages and locates the text and tables. Then an AI model reads that content. Both stages run on computers rented from Amazon Web Services (AWS), using GPUs, processors suited to this kind of AI work. The copies of software doing the processing are called workers. When they’re busy, incoming work waits in a queue until a worker is available.
+There are two main processing stages to keep in mind. First, the application prepares the PDF pages and locates the text and tables. Then an AI model reads that content. Both stages run on computers rented from Amazon Web Services (AWS), using GPUs, processors suited to this kind of AI work. The copies of software doing the processing are called workers. When they’re busy, incoming work waits in a queue until a worker is available. In the game, each stage can take work independently. The course worker keeps a batch until both stages finish; the game’s extra queue lets you explore a different way to organise the processing.
 
-![An uploaded PDF is prepared so its text and table regions can be located. An AI model then reads those regions and returns their contents. Work can wait in a queue before either stage.](document-journey.png)
+![An uploaded PDF is prepared so its text and table regions can be located. An AI model then reads those regions and returns their contents. The game models a queue before each stage.](document-journey.png)
 
-*The application prepares pages and reads their contents in separate stages. Each stage has workers to do the processing and a queue for work that has to wait.*
+*The game models a queue before each processing stage, so you can see where documents are waiting.*
 
 ## Level 1: Control the cost of occasional uploads
 
@@ -34,7 +34,7 @@ Partway through processing an invoice, one of the workers stops. The upload succ
 
 For the application to recover, it needs the original file, a record that the work is unfinished, and a way to give that work another attempt. Those are separate responsibilities. Saving the PDF somewhere safe doesn’t, on its own, arrange for it to be processed again.
 
-There is another detail to consider: an attempt might be repeated even though a result was already saved. Real cloud queues can [deliver the same job more than once](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html). If the application publishes another result for the same invoice, the finance team could end up with duplicate records to reconcile. Recovery has to account for what was already completed as well as what still needs doing.
+There is another detail to consider: a client may submit the same invoice again after its result was already saved. That is the second event in this level. Separately, real cloud queues can [deliver the same job more than once](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html). If the application publishes another result for the same invoice, the finance team could end up with duplicate records to reconcile. Recovery has to account for what was already completed as well as what still needs doing.
 
 ## Level 4: Find the stage that limits throughput
 
@@ -52,13 +52,13 @@ The finance team needs a clear answer about those files too. A failed document s
 
 Finally, you have an entire collection to process: 10,000 documents. You request more workers, but some remain waiting to start. The application has asked for them; that doesn’t mean there are computers available to run them.
 
-The settings for your deployment may allow fewer computers than the workers need. AWS also places [limits on how much computing capacity an account can request](https://docs.aws.amazon.com/eks/latest/best-practices/known_limits_and_service_quotas.html), and the machines you want must be available. Until those conditions are met, a higher requested worker count won’t get more invoices processed.
+The settings for your deployment may allow fewer computers than the workers need. AWS also places [limits on how much computing capacity an account can request](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-quotas.html#on-demand-instances), and the machines you want must be available. Until those conditions are met, a higher requested worker count won’t get more invoices processed.
 
 Once the workers can run, both processing stages still need enough capacity. Preparing pages faster won’t finish the import if the reading stage cannot keep up, and the reverse is true too. You now have to manage that balance across a much larger collection, with the delivery requirement and cost visible throughout.
 
 ## Try running the service yourself
 
-Each time you replay a level, the same documents arrive and the same failures happen. That makes it easier to judge a change. You can see whether starting the computers earlier helped, whether extra workers reduced the wait, or whether a recovery change allowed an interrupted document to finish.
+Each time you replay a level, the same documents arrive and the same failure rules apply. In the recovery level, the interruption waits for a worker with documents in progress, so starting later cannot avoid the test. That makes it easier to judge a change. You can see whether starting the computers earlier helped, whether extra workers reduced the wait, or whether a recovery change allowed an interrupted document to finish.
 
 The game uses simulated processing times and AWS reference prices in USD. The deadlines are requirements for the exercises, and the cost is an estimate of the services included in the simulation. You don’t need an AWS account, and playing creates no cloud charges.
 

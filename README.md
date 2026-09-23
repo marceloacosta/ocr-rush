@@ -16,7 +16,7 @@ Locally, open `/article/` or `/article/substack.html`. Keep the HTML and Markdow
 
 ## Sharing results
 
-Every result link carries the exact configuration, including failed attempts. Opening it loads that design; only passing results become cost targets. Copy link, copy post text and download image are separate actions. Native sharing includes the PNG when supported, with a link-only fallback. Editing a design requires a fresh run before sharing it. Local previews create links to the public game.
+Every result link carries the exact configuration, including failed attempts. Simulation v5 reads v4 links and saved designs, recalculates them under the corrected failure rules, and retains only valid completed levels. Older links display an update notice. Opening it loads that design; only passing results become cost targets. Copy link, copy post text and download image are separate actions. Native sharing includes the PNG when supported, with a link-only fallback. Editing a design requires a fresh run before sharing it. Local previews create links to the public game.
 
 The game and article have separate illustrated 1200 × 630 preview images and explicit Open Graph/X metadata. Regenerate the images with `node render-social-cards.mjs`. The reference pricing region is documented in the model assumptions rather than promoted in the game controls or results summary.
 
@@ -46,6 +46,14 @@ The deployment check exercises the built files at the production path before pub
 Pushing to `main` runs `.github/workflows/deploy.yml`: tests, static build, upload and GitHub Pages deployment. The project inherits `www.marcelops.com` from the account's existing user site. No separate CNAME or DNS change is needed. `PUBLIC_URL` can override the full HTTPS deployment URL when building for another host. Roll back by reverting a commit and running the same workflow.
 
 Only `dist/` is served. There is no backend, AWS account requirement or runtime cloud deployment. Metadata and challenge URLs include the `/ocr-rush/` path.
+
+## Simulation boundaries
+
+The source worker waits for each batch of up to four documents to finish both stages, and an exception can fail the whole batch. The game explores independently queued stages with per-file failure isolation. That variation is identified in the interface and companion article; the source batch scheduler is not reproduced.
+
+Scheduled and queue-activated capacity both assume an added EC2 node lifecycle controller. KEDA scales pods; the warm option assumes nodes are provisioned. The initial two-node inference limit follows Terraform, while the source's CLI setup permits four. Disk charges retain the cost example's 200 GB assumption; the deployment files specify 100 GB. Region and pricing differences are documented in the detailed assumptions.
+
+The recovery event targets a busy inference worker at or after minute 13, including when capacity starts late. Invalid PDFs fail during page preparation without consuming inference tokens. The 24 model and sharing tests include 144 storage-only recovery configurations, outcome conservation, six feasible designs and migration of older shared/saved designs.
 
 ## Attribution
 

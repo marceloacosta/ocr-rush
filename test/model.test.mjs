@@ -35,9 +35,26 @@ test('visibility expiry recovers interrupted work; idempotency separately protec
  const retry=safe.events.find(e=>e.kind==='retry'&&e.text.includes('visible again'));assert.ok(retry.time>CONTRACTS[2].fault);assert.ok(retry.time<=CONTRACTS[2].fault+120);assert.ok(safe.events.some(e=>e.kind==='safe'));
  assert.ok(safe.jobs.some(j=>j.attempts>1&&j.timing.retry>0));assert.ok(safe.jobs.every(j=>j.deadline===j.arrival+CONTRACTS[2].deadline));near(safe.usage.s3Puts,2000);
 });
+test('a late-starting worker cannot avoid the recovery failure; storage alone never recovers interrupted jobs',()=>{
+ for(let workers=1;workers<=8;workers++)for(const power of ['warm','demand','scheduled'])for(const batch of [1,16])for(const layout of [1,2,4]){
+  const r=simulate({...DEFAULT,workers,power,batch,layout,quota:8,queue:'s3redis',recovery:true},2);
+  assert.ok(r.lost>0,JSON.stringify(r.config));assert.equal(r.passed,false);
+  const faults=r.events.filter(e=>e.kind==='fault');assert.equal(faults.length,1);assert.ok(faults[0].time>=CONTRACTS[2].fault);assert.doesNotMatch(faults[0].text,/with 0 PDFs/);
+ }
+ const cold=simulate({...DEFAULT,workers:8,power:'demand',quota:8,queue:'sqs',recovery:true},2);
+ assert.equal(cold.lost,0);assert.ok(cold.retries>0);assert.ok(cold.events.find(e=>e.kind==='fault').time>CONTRACTS[2].fault);
+});
 test('DLQ keeps invalid files without counting them as valid outputs',()=>{
  const endless=simulate({...burst,queue:'sqs'},4),isolated=results[4];assert.equal(endless.unfinished,2);assert.equal(isolated.quarantined,2);assert.equal(isolated.done,998);assert.equal(isolated.donePages,3992);assert.ok(isolated.jobs.filter(j=>j.bad).every(j=>j.attempts===2&&j.finish===null&&j.status==='quarantined'));
  const lost=simulate({...burst,dlq:true},4);assert.equal(lost.quarantined,0);assert.equal(lost.failed,2);assert.ok(!lost.passed);
+});
+test('invalid PDFs fail during page preparation and never consume inference tokens',()=>{
+ for(const queue of ['redis','s3redis','sqs']){
+  const r=simulate({...burst,queue,dlq:true},4);
+  assert.ok(r.jobs.filter(j=>j.bad).every(j=>j.timing.layout>0&&j.timing.inference===0));
+  near(r.usage.generatedTokens,r.donePages*CONTRACTS[4].tokens);
+  assert.ok(r.events.filter(e=>e.kind==='error').every(e=>e.text.includes('page preparation')));
+ }
 });
 test('latency components conserve elapsed time and exclude unfinished documents',()=>{
  for(const r of [...results,simulate(DEFAULT,5)]){
