@@ -5,7 +5,24 @@ export async function checkNewsletter(browser){
  const context=await browser.newContext({viewport:{width:1440,height:1100},reducedMotion:'reduce'});
  const page=await context.newPage();
  try{
+  const now=new Date('2026-09-23T12:00:00Z');
+  await page.clock.install({time:new Date(now.getTime()-1000)});
+  await page.clock.pauseAt(now);
   await page.goto('http://127.0.0.1:4174/',{waitUntil:'domcontentloaded'});
+  assert.ok(await page.locator('#newsletter-dialog').isHidden());
+  assert.ok(await page.locator('#start').isHidden());
+  assert.ok(await page.locator('#start').isDisabled());
+  assert.equal(await page.locator('#play-wait').innerText(),'You can play for free in 8 seconds.');
+  assert.match(await page.locator('.newsletter-card .newsletter-return').innerText(),/Substack may open a new tab/);
+  await page.clock.fastForward(7000);
+  assert.equal(await page.locator('#play-wait').innerText(),'You can play for free in 1 second.');
+  await page.clock.fastForward(999);
+  assert.ok(await page.locator('#start').isHidden());
+  await page.clock.fastForward(1);
+  assert.ok(await page.locator('#start').isVisible());
+  assert.ok(await page.locator('#start').isEnabled());
+  assert.ok(await page.locator('#play-wait').isHidden());
+  await page.clock.resume();
   const signup=page.frameLocator('#newsletter-embed');
   await signup.getByRole('textbox',{name:'Email',exact:true}).waitFor({timeout:45000});
   assert.match(await page.locator('#newsletter-embed').getAttribute('src'),/^https:\/\/buildwithaws\.substack\.com\/embed\?/);
@@ -43,7 +60,7 @@ export async function checkNewsletter(browser){
   await page.keyboard.press('Escape');
   assert.ok(await page.locator('#newsletter-dialog').isHidden());
   assert.equal(await page.locator('#result-checks').innerText(),result);
-  assert.ok(await page.locator('#newsletter-open').evaluate(el=>el===document.activeElement));
+  await page.waitForFunction(()=>document.activeElement===document.getElementById('newsletter-open'));
   await page.locator('#newsletter-dismiss').click();
   assert.ok(await page.locator('#newsletter-invite').isHidden());
   await page.reload({waitUntil:'domcontentloaded'});
@@ -61,9 +78,11 @@ export async function checkNewsletter(browser){
   await blocked.route('https://buildwithaws.substack.com/embed?*',route=>route.abort());
   const page=await blocked.newPage();
   await page.goto('http://127.0.0.1:4174/',{waitUntil:'domcontentloaded'});
+  assert.ok(await page.locator('#start').isHidden());
+  assert.ok(await page.locator('#newsletter-dialog').isHidden());
   assert.equal(await page.locator('.newsletter-card .newsletter-fallback').getAttribute('href'),'https://buildwithaws.substack.com/subscribe');
   await page.locator('#start').click();
   assert.ok(await page.locator('#game').isVisible());
  }finally{await blocked.close();}
- console.log('PASS: real Substack form renders on desktop/mobile, no clipping, optional entry, contextual invitation, dismissal persists, modal preserves results, blocked-embed fallback. No subscription submitted.');
+ console.log('PASS: inline Substack form, return note, play button hidden for 8 seconds then enabled without signup, desktop/mobile sizing, contextual invitation, dismissal, preserved results and blocked-embed fallback. No subscription submitted.');
 }

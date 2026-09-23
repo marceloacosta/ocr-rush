@@ -4,7 +4,7 @@ import {CONTRACTS,DEFAULT,normalize,designKey,simulate,explain,capacity,PROFILE,
 import {AWS_MISSIONS,awsDesign,awsTakeaway,architectureContext} from './aws.js';
 import {money,duration,clockTime} from './pricing.js';
 import {modelAssumptions,costDetails,latencyDetails} from './research.js';
-import {showNewsletterInvite} from './newsletter.js';
+import {showNewsletterInvite} from './newsletter.js?v=inline-signup-1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let saved=null,canSave=true;try{saved=readProgress(localStorage.getItem(PROGRESS_KEY));}catch{canSave=false;}
 const incomingChallenge=readChallenge(location.href);

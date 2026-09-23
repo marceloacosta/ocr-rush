@@ -4,7 +4,7 @@ A free Build With AWS architecture game. [Play at marcelops.com](https://www.mar
 
 Six levels explore document processing on Amazon EKS, separate EC2 GPU pools, Redis, and selectable S3/SQS variations. Compare delivery times, estimated USD costs and recovery behavior, then share a reproducible challenge. Throughput is simulated and costs use pinned reference prices; this is not an AWS benchmark or a complete production bill.
 
-The game runs entirely in the browser. Newsletter signup uses the official Build With AWS Substack embed, and playing does not require a subscription. Progress is saved locally in the player's browser.
+The game runs entirely in the browser. Newsletter signup uses the official Build With AWS Substack embed directly on the landing page, with a note explaining that signup may open another tab. The Play the free game button appears after 8 seconds; playing does not require a subscription. No modal opens on arrival. Progress is saved locally in the player's browser.
 
 ## Local development
 

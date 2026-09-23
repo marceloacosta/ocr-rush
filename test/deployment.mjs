@@ -27,6 +27,10 @@ try{
  page.on('response',response=>{if(response.url().startsWith(base)&&response.status()>=400)failed.push(response.url());});
  const response=await page.goto(base,{waitUntil:'domcontentloaded'});
  assert.equal(response.status(),200);
+ assert.ok(await page.locator('#newsletter-dialog').isHidden());
+ assert.ok(await page.locator('#start').isHidden());
+ assert.ok(await page.locator('#start').isDisabled());
+ assert.match(await page.locator('.newsletter-card .newsletter-return').innerText(),/Substack may open a new tab/);
  assert.equal(await page.locator('meta[property="og:url"]').getAttribute('content'),base);
  assert.equal(await page.locator('meta[property="og:image"]').getAttribute('content'),base+'social-preview.png');
  assert.equal(await page.locator('.level-card').count(),6);
@@ -37,6 +41,8 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow at ${width}`);
  }
  if(live)await page.frameLocator('#newsletter-embed').getByRole('textbox',{name:'Email',exact:true}).waitFor({timeout:45000});
+ await page.locator('#start').waitFor({state:'visible',timeout:12000});
+ assert.ok(await page.locator('#start').isEnabled());
  await page.locator('#start').click();
  await page.locator('[data-power="demand"]').click();
  await page.locator('#run').click();
@@ -49,11 +55,13 @@ try{
  assert.ok(new URL(challenge).searchParams.has('design'));
  await page.goto(challenge,{waitUntil:'domcontentloaded'});
  assert.match(await page.locator('#welcome-challenge').innerText(),/shared challenge for level 1/i);
+ await page.locator('#start').waitFor({state:'visible',timeout:12000});
  await page.locator('#start').click();
+ await page.locator('#game').waitFor({state:'visible'});
  await page.locator('#architecture').click();
  assert.match(await page.locator('#dialog-body').innerText(),/Amazon ECR/);
  assert.deepEqual(errors,[]);
  assert.deepEqual(failed,[]);
- console.log(`PASS: ${live?'live deployment and Substack form':'built static site'} at ${base}; assets, metadata, mobile layout, gameplay and playable challenges.`);
+ console.log(`PASS: ${live?'live deployment and Substack form':'built static site'} at ${base}; inline signup, delayed game entry, return note, assets, metadata, mobile layout, gameplay and playable challenges.`);
  await context.close();
 }finally{await browser.close();}

@@ -30,3 +30,16 @@ dialog.addEventListener('click',event=>{
  const box=dialog.getBoundingClientRect();
  if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)dialog.close();
 });
+
+// A short invitation to subscribe first. This delay never implies membership.
+const playDelay=8000,availableAt=performance.now()+playDelay;
+const countdown=setInterval(()=>{
+ const seconds=Math.max(1,Math.ceil((availableAt-performance.now())/1000));
+ $('play-wait').textContent=`You can play for free in ${seconds} second${seconds===1?'':'s'}.`;
+},250);
+setTimeout(()=>{
+ clearInterval(countdown);
+ $('play-wait').hidden=true;
+ $('start').hidden=false;
+ $('start').disabled=false;
+},playDelay);
