@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict';
+import {checkNewsletter} from './newsletter.mjs';
+import {checkGame} from './game-browser.mjs';
+import {writeFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,channel:'chrome'}),errors=[];
+try{
+ if(process.argv.includes('--build-preview')){
+  const page=await browser.newPage();await page.route('https://buildwithaws.substack.com/embed?*',r=>r.abort());await page.goto('http://127.0.0.1:4174/');await page.evaluate(()=>document.fonts.ready);
+  const image=await page.evaluate(async()=>{const {drawCard}=await import('/cards.js');return drawCard(document.createElement('canvas'),{preview:true}).toDataURL('image/png').split(',')[1];});
+  await writeFile(new URL('../public/social-preview.png',import.meta.url),Buffer.from(image,'base64'));console.log('Built 1200 × 630 social preview.');
+ }else if(process.argv.includes('--newsletter-only')){await checkNewsletter(browser);}else if(process.argv.includes('--game-only')){await checkGame(browser);}else{
+ await checkNewsletter(browser);await checkGame(browser);
+ const page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'});page.on('pageerror',e=>errors.push(e.stack));
+ await page.route('https://buildwithaws.substack.com/embed?*',route=>route.abort());
+ await page.goto('http://127.0.0.1:4174/',{waitUntil:'domcontentloaded'});
+ assert.ok(await page.locator('#welcome').isVisible());assert.ok(await page.locator('#game').isHidden());
+ await page.locator('#start').click();assert.match(await page.locator('#contract-name').innerText(),/60 receipts/);assert.equal(await page.locator('[data-contract]').count(),6);
+ assert.match(await page.locator('#profile-summary').innerText(),/360 tokens\/s/);assert.match(await page.locator('#deadline-reason').innerText(),/accounting team/);assert.match(await page.locator('#workload-facts').innerText(),/60 PDFs × 1 page/);assert.match(await page.locator('#contract-goal').innerText(),/\$3.80 USD/);
+ await page.screenshot({path:'/private/tmp/ocr-rush-factory.png',fullPage:true});await page.locator('.brief').screenshot({path:'/private/tmp/ocr-rush-brief.png'});await page.locator('#factory').screenshot({path:'/private/tmp/ocr-rush-redis.png'});assert.match(await page.locator('#factory').textContent(),/Redis results/);assert.doesNotMatch(await page.locator('#factory').textContent(),/Amazon S3/);assert.match(await page.locator('#architecture-context').innerText(),/stores document data, job state and results in Redis/);assert.ok(await page.locator('#recovery-toggle').isDisabled());assert.equal(await page.locator('[data-quota="2"]').getAttribute('aria-pressed'),'true');
+ assert.match(await page.locator('#factory').textContent(),/Amazon EKS/);assert.match(await page.locator('#aws-detail').innerText(),/Keep the selected GPU nodes/);
+ await page.locator('[data-service="eks"]').click();assert.match(await page.locator('#aws-detail').innerText(),/KEDA/);
+ // A service card opens and focuses the real control without changing the selected queue.
+ await page.locator('[data-service="delivery"]').click();await page.locator('#open-delivery-controls').click();assert.ok(await page.locator('#recovery-controls').evaluate(e=>e.open));assert.equal(await page.locator('[data-queue="redis"]').getAttribute('aria-pressed'),'true');
+ async function run(){await page.locator('#run').click();await page.waitForFunction(()=>!document.getElementById('run').disabled);assert.ok(await page.locator('#results').isVisible());}
+ await run();assert.match(await page.locator('#result-title').innerText(),/cost exceeded/);assert.ok(await page.locator('#next').isDisabled());assert.match(await page.locator('#cost-breakdown').innerText(),/T4 layout/);assert.match(await page.locator('#cost-breakdown').innerText(),/no S3 or SQS document charges/);
+ await page.locator('[data-power="demand"]').click();await run();assert.ok(await page.locator('#next').isEnabled());assert.ok(await page.locator('#comparison').isVisible());assert.match(await page.locator('#comparison').innerText(),/\$2.95 USD/);
+ assert.match(await page.locator('#aws-detail').innerText(),/external work signal/);assert.match(await page.locator('.aws-takeaway').innerText(),/persistent platform/);
+ await page.locator('#scrubber').fill('13');assert.match(await page.locator('#clock').innerText(),/02:10/);
+ await page.locator('#next').click();assert.match(await page.locator('#contract-name').innerText(),/1,000 invoices/);
+ await page.locator('.workshop').evaluate(el=>el.scrollIntoView({block:'start'}));
+ const card=await page.locator('#worker-card').boundingBox(),bay=await page.locator('[data-bay="1"]').boundingBox();
+ await page.mouse.move(card.x+card.width/2,card.y+card.height/2);await page.mouse.down();await page.mouse.move(bay.x+bay.width/2,bay.y+bay.height/2,{steps:20});await page.mouse.up();
+ assert.match(await page.locator('#worker-count').innerText(),/2 \/ 8/);
+ await page.locator('#worker-card').click();await page.locator('#worker-card').click();await page.locator('[data-power="scheduled"]').click();await page.locator('[data-batch="16"]').click();await page.locator('[data-quota="4"]').click();await run();assert.ok(await page.locator('#next').isEnabled());await page.locator('#next').click();
+ await run();assert.match(await page.locator('#result-title').innerText(),/not recovered/);
+ await page.locator('[data-queue="s3redis"]').click();await run();assert.match(await page.locator('#result-title').innerText(),/not recovered/);assert.match(await page.locator('#factory').textContent(),/Amazon S3/);assert.match(await page.locator('#aws-detail').innerText(),/does not add queue recovery/);assert.match(await page.locator('#cost-breakdown').innerText(),/S3 storage and requests/);assert.doesNotMatch(await page.locator('#cost-breakdown').innerText(),/SQS Standard/);await page.locator('[data-queue="sqs"]').click();await run();assert.match(await page.locator('#result-title').innerText(),/another result/);
+ assert.match(await page.locator('#factory').textContent(),/Amazon S3/);assert.match(await page.locator('#factory').textContent(),/Amazon SQS/);assert.match(await page.locator('#aws-detail').innerText(),/deletes the SQS message after success/);assert.match(await page.locator('.aws-takeaway').innerText(),/conditional output writes/);
+ await page.locator('#recovery-toggle').check();await run();assert.ok(await page.locator('#next').isEnabled());assert.match(await page.locator('.aws-takeaway').innerText(),/0 duplicate results/);
+ await page.locator('#next').click();assert.match(await page.locator('#contract-name').innerText(),/200 scanned reports/);assert.ok(await page.locator('#cpu-controls').evaluate(e=>e.open));
+ await run();assert.ok(await page.locator('#next').isDisabled());assert.match(await page.locator('.aws-takeaway').innerText(),/wait before each stage/);
+ await page.locator('[data-layout="4"]').click();await run();assert.ok(await page.locator('#next').isEnabled());assert.match(await page.locator('#result-checks').innerText(),/200\/200/);await page.screenshot({path:'/private/tmp/ocr-rush-archive.png',fullPage:true});
+ await page.locator('#next').click();assert.match(await page.locator('#contract-name').innerText(),/two invalid PDFs/);
+ await page.locator('[data-layout="1"]').click();await run();assert.ok(await page.locator('#next').isDisabled());assert.match(await page.locator('#result-title').innerText(),/invalid files need separate handling/);
+ await page.locator('#dlq-toggle').check();await run();assert.ok(await page.locator('#next').isEnabled());assert.match(await page.locator('#result-checks').innerText(),/998\/998/);assert.match(await page.locator('#result-checks').innerText(),/2\/2 broken PDFs isolated/);assert.match(await page.locator('#factory').textContent(),/DLQ · 2 isolated PDFs/);
+ await page.screenshot({path:'/private/tmp/ocr-rush-results.png',fullPage:true});
+ await page.locator('.managed-option summary').click();assert.match(await page.locator('.managed-option').innerText(),/\$6.00 for text detection/);assert.match(await page.locator('.managed-option').innerText(),/not a Textract latency simulation/);
+ await page.locator('#next').click();assert.match(await page.locator('#contract-name').innerText(),/10,000 PDFs/);
+ await page.locator('#worker-card').click({clickCount:4});assert.match(await page.locator('#worker-count').innerText(),/8 \/ 8/);
+ await page.locator('#cpu-controls').evaluate(e=>e.open=true);await page.locator('[data-layout="2"]').click();await page.locator('[data-power="demand"]').click();await run();assert.ok(await page.locator('#next').isDisabled());assert.match(await page.locator('.aws-takeaway').innerText(),/4 stayed pending/);
+ await page.locator('[data-quota="8"]').click();await run();assert.ok(await page.locator('#next').isEnabled());assert.match(await page.locator('#result-checks').innerText(),/10000\/10000/);assert.match(await page.locator('#latency-breakdown').innerText(),/40,000 pages/);assert.match(await page.locator('#latency-breakdown').innerText(),/Queue wait/);assert.match(await page.locator('#latency-breakdown').innerText(),/0 undelivered/);
+ await page.screenshot({path:'/private/tmp/ocr-rush-scale.png',fullPage:true});
+ await page.locator('#next').click();assert.ok(await page.locator('#graduation').isVisible());assert.match(await page.locator('#progress-summary').innerText(),/6 of 6/);await page.locator('#share-campaign').click();assert.match(await page.locator('#share-caption').inputValue(),/all six levels/);await page.keyboard.press('Escape');
+ const download=page.waitForEvent('download');await page.locator('#save').click();await (await download).saveAs('/private/tmp/ocr-rush-card.png');
+ await page.locator('#share').click();assert.match(await page.locator('#dialog-body').innerText(),/local preview/);assert.match(await page.locator('#share-caption').inputValue(),/10,000\/10,000 valid PDFs/);await page.keyboard.press('Escape');
+ await page.locator('#architecture').click();assert.match(await page.locator('#dialog-body').innerText(),/SQS/);assert.match(await page.locator('#dialog-body').innerText(),/100 ms/);assert.match(await page.locator('#dialog-body').innerText(),/node autoscaler/);await page.keyboard.press('Escape');
+ await page.locator('#assumptions').click();assert.match(await page.locator('#dialog-body').innerText(),/not a measured/);assert.match(await page.locator('#dialog-body').innerText(),/60-second minimum/);await page.keyboard.press('Escape');
+ await page.locator('[data-batch="1"]').click();assert.ok(await page.locator('#next').isDisabled());assert.ok(await page.locator('#graduation').isHidden());
+ for(const width of [320,390,760,1024,1440]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow at ${width}`);}
+ const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,reducedMotion:'reduce'});mobile.on('pageerror',e=>errors.push(e.stack));await mobile.route('https://buildwithaws.substack.com/embed?*',route=>route.abort());await mobile.goto('http://127.0.0.1:4174/');await mobile.locator('#start').tap();await mobile.locator('#worker-card').tap();assert.match(await mobile.locator('#worker-count').innerText(),/2 \/ 8/);await mobile.locator('#remove-worker').tap();await mobile.locator('[data-power="demand"]').tap();await mobile.locator('#run').tap();await mobile.waitForFunction(()=>!document.getElementById('run').disabled);assert.ok(await mobile.locator('#next').isEnabled());await mobile.screenshot({path:'/private/tmp/ocr-rush-mobile.png',fullPage:true});
+ const animated=await browser.newPage({viewport:{width:1440,height:1000}});await animated.route('https://buildwithaws.substack.com/embed?*',route=>route.abort());await animated.goto('http://127.0.0.1:4174/?contract=rush');await animated.locator('#start').click();await animated.locator('#run').click();await animated.locator('#pause').click();assert.ok(await animated.locator('#worker-card').isDisabled());const clock=await animated.locator('#clock').innerText();await animated.waitForTimeout(350);assert.equal(await animated.locator('#clock').innerText(),clock);await animated.locator('#pause').click();await animated.waitForFunction(()=>!document.getElementById('run').disabled,null,{timeout:25000});
+ assert.deepEqual(errors,[]);console.log('PASS: six workloads, two-decimal USD amounts, Redis baseline, S3-only and SQS variations, two-pool receipt, page counts, seconds replay, GPU drag, queue shortcut, delayed retry, idempotency, separate layout bottleneck, DLQ, 10,000 PDFs, pending capacity, latency breakdown, managed-cost comparison, export, stale results, pause, mobile widths and touch.');
+}
+}finally{await browser.close();}
