@@ -8,10 +8,17 @@ test('a shared configuration reproduces its target without trusting URL-provided
  assert.equal(parsed.searchParams.get('unrelated'),null);assert.equal(parsed.hash,'');assert.equal(challenge.stage,0);assert.equal(challenge.result.cost,success.cost);assert.equal(challenge.result.passed,true);
  parsed.searchParams.set('cost','0.001');assert.equal(readChallenge(parsed).result.cost,success.cost);
 });
-test('bad, oversized, incompatible and non-passing challenges never become targets',()=>{
+test('bad, oversized and incompatible shared designs are rejected',()=>{
  const url=new URL(challengeURL('https://game.example/',success));url.searchParams.set('v',String(VERSION-1));assert.ok(readChallenge(url).error);url.searchParams.set('v',String(VERSION));
- for(const value of ['<script>', 'null','[]','x'.repeat(601),JSON.stringify({...success.config,workers:999}),JSON.stringify(DEFAULT)]){url.searchParams.set('design',value);assert.equal(readChallenge(url).result,null);assert.ok(readChallenge(url).error);}
- assert.equal(new URL(challengeURL('https://game.example/',failure)).searchParams.get('design'),null);
+ for(const value of ['<script>', 'null','[]','x'.repeat(601),JSON.stringify({...success.config,workers:999})]){url.searchParams.set('design',value);assert.equal(readChallenge(url).result,null);assert.ok(readChallenge(url).error);}
+});
+test('failed attempts retain their configuration and outcome without becoming cost targets',()=>{
+ const url=challengeURL('https://game.example/',failure),restored=readChallenge(url);
+ assert.ok(new URL(url).searchParams.has('design'));
+ assert.deepEqual(restored.result.config,failure.config);
+ assert.equal(restored.result.passed,false);
+ assert.equal(restored.result.cost,failure.cost);
+ assert.equal(compareChallenge(success,restored.result),null);
 });
 test('progress stores configurations and recomputes completed levels on restore',()=>{
  const stored=writeProgress(best,0,success.config),restored=readProgress(stored);assert.equal(restored.best.filter(Boolean).length,1);assert.equal(restored.best[0].cost,success.cost);assert.deepEqual(restored.config,success.config);

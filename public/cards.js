@@ -11,7 +11,7 @@ export function drawCard(canvas,{result=null,best=[],campaign=false,preview=fals
  ctx.textAlign='right';write(ctx,'BUILD WITH AWS',1135,78,16,'#506b89',600);ctx.textAlign='left';
  const index=result?CONTRACTS.findIndex(c=>c.id===result.contract):0,count=best.filter(Boolean).length;
  const all=campaign&&count===CONTRACTS.length;
- const title=preview?'Can you complete all six levels?':all?'All six levels completed.':result.passed?`Level ${index+1} complete.`:`Level ${index+1}: a design to improve.`;
+ const title=preview?'Can you complete all six levels?':all?'All six levels completed.':result.passed?`Level ${index+1} complete.`:`Level ${index+1}: requirements not met.`;
  write(ctx,title,65,154,43,'#18314e',700,1060);
  let detail=preview?'Keep documents on time and within budget. Change the AWS architecture, replay the workload, and challenge someone to improve your result.':all?'Receipts, invoice uploads, worker failures, scanned reports, invalid files and a 10,000-document import.':CONTRACTS[index].name;
  wrap(ctx,detail,65,198,1050,23,32);
@@ -23,7 +23,7 @@ export function drawCard(canvas,{result=null,best=[],campaign=false,preview=fals
  else write(ctx,preview?'Free to play. No AWS account or cloud charges.':'Replay any level to find a lower-cost configuration.',65,457,23);
  for(let i=0;i<6;i++){const done=!!best[i];rounded(ctx,65+i*62,510,48,42,9,done?'#0053b4':'#e9eff8');write(ctx,String(i+1),82+i*62,539,20,done?'#fff':'#61758e',600);}
  write(ctx,preview?'Choose a level and compare your designs.':`${count} of 6 levels completed in this browser`,465,538,20,'#526d88');
- write(ctx,'Simulation with AWS reference prices. Results are not an AWS benchmark.',65,583,15,'#637e9b');
+ write(ctx,'marcelops.com/ocr-rush · Simulated results with AWS reference prices.',65,583,15,'#637e9b');
  return canvas;
 }
 export function cardBlob(options){const canvas=drawCard(document.createElement('canvas'),options);return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}

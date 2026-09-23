@@ -49,3 +49,5 @@
 .newsletter-help{margin-top:14px;color:#657e96;font-size:12px}.newsletter-help summary{cursor:pointer;text-align:center}.newsletter-help .newsletter-fallback{margin-top:12px}.newsletter-card{border-top:4px solid var(--orange)}
 
 .newsletter-card .newsletter-return{font-size:13px;line-height:1.6;color:#61758e;margin:8px 0 0}.newsletter-play{min-height:76px}.newsletter-play #play-wait{padding:12px 0}
+
+.share-link{display:block;width:100%;min-width:0;padding:13px 14px;border:1px solid #c3d6e9;border-radius:8px;background:#fff;color:#18314e;font:14px/1.5 var(--body)}.share-post{margin-top:22px;border-top:1px solid #dce4ee;padding-top:17px}.share-post summary{cursor:pointer;font-size:15px;color:#45607d}.share-post .secondary{margin-top:10px}#share-status{min-height:24px;margin:13px 0 18px}#share-download{font-size:15px}.share-actions{margin-top:12px}

@@ -20,7 +20,7 @@ export function readProgress(raw){
 export function writeProgress(best,stage,config){return JSON.stringify({version:VERSION,best:best.map(r=>r?.passed?r.config:null),stage,config:normalize(config)});}
 export function challengeURL(base,result){
  const url=new URL(base);url.search='';url.hash='';url.searchParams.set('contract',result.contract);
- if(result.passed){url.searchParams.set('v',String(VERSION));url.searchParams.set('design',JSON.stringify(normalize(result.config)));}
+ url.searchParams.set('v',String(VERSION));url.searchParams.set('design',JSON.stringify(normalize(result.config)));
  return url.href;
 }
 export function readChallenge(base){
@@ -31,15 +31,15 @@ export function readChallenge(base){
   if(stage<0||!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('invalid');
   const config=normalize(parsed);
   if(Object.keys(config).some(k=>parsed[k]!==config[k])||Object.keys(parsed).length!==Object.keys(config).length)throw Error('invalid');
-  const result=simulate(config,stage);if(!result.passed)throw Error('not a passing design');
+  const result=simulate(config,stage);
   return {result,stage,error:null};
  }catch{return {result:null,error:'This shared design could not be reproduced. You can still play the level from its starting configuration.'};}
 }
 export const localPreview=base=>['localhost','127.0.0.1','[::1]'].includes(new URL(base).hostname);
 export function compareChallenge(result,target){
- if(!target||result.contract!==target.contract)return null;
+ if(!target?.passed||result.contract!==target.contract)return null;
  if(!result.passed)return 'Meet this level’s delivery, recovery and budget requirements before comparing cost with the shared design.';
  const diff=Math.round(target.cost*100)-Math.round(result.cost*100);
  return diff>0?`You completed the same level for ${money(diff/100)} less than the shared design.`:diff===0?'You matched the shared design’s displayed cost while meeting the same requirements.':`You completed the level. The shared design costs ${money(-diff/100)} less at the displayed precision.`;
 }
-export function shareText(result,best){const index=CONTRACTS.findIndex(c=>c.id===result.contract),count=best.filter(Boolean).length;return result.passed?`I completed level ${index+1} of OCR Rush, the AWS architecture game: ${result.onTime.toLocaleString('en-US')}/${result.target.toLocaleString('en-US')} valid PDFs on time for ${money(result.cost)} estimated USD. ${count}/6 levels completed. Can you meet the same requirements for less? Costs and throughput are simulated.`:`I tried level ${index+1} of OCR Rush, the AWS architecture game. ${result.onTime.toLocaleString('en-US')}/${result.target.toLocaleString('en-US')} valid PDFs arrived on time for ${money(result.cost)} estimated USD. What would you change? Costs and throughput are simulated.`;}
+export function shareText(result,best){const index=CONTRACTS.findIndex(c=>c.id===result.contract),count=best.filter(Boolean).length;return result.passed?`I completed level ${index+1} of OCR Rush, the AWS architecture game: ${result.onTime.toLocaleString('en-US')}/${result.target.toLocaleString('en-US')} valid PDFs on time for ${money(result.cost)} estimated USD. ${count}/6 levels completed. Can you meet the same requirements for less? Costs and throughput are simulated.`:`I tried level ${index+1} of OCR Rush, the AWS architecture game. ${result.onTime.toLocaleString('en-US')}/${result.target.toLocaleString('en-US')} valid PDFs finished on time for ${money(result.cost)} estimated USD. What would you change? Costs and throughput are simulated.`;}

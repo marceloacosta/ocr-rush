@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="robots" content="noindex">
+ <title>Copy OCR Rush article to Substack</title>
+ <link rel="icon" href="../favicon.svg">
+ <link rel="stylesheet" href="./export.css">
+ <script src="./export.js" type="module"></script>
+</head>
+<body>
+ <main>
+  <a href="./">← Back to the article</a>
+  <h1>Copy the article to Substack</h1>
+  <p>Open a new Substack article. Copy the title, subtitle and body into their respective fields. Use normal paste to keep headings, emphasis and links.</p>
+  <p><a href="./ocr-rush-companion.docx" download>Download the editable Word document</a> if you prefer to revise it in Word or Google Docs. The document includes the diagram.</p>
+  <section aria-labelledby="title-label">
+   <div class="field-heading"><h2 id="title-label">Title</h2><button data-copy="title" disabled>Copy title</button></div>
+   <textarea id="title" aria-labelledby="title-label" readonly rows="2"></textarea>
+  </section>
+  <section aria-labelledby="subtitle-label">
+   <div class="field-heading"><h2 id="subtitle-label">Subtitle</h2><button data-copy="subtitle" disabled>Copy subtitle</button></div>
+   <textarea id="subtitle" aria-labelledby="subtitle-label" readonly rows="2"></textarea>
+  </section>
+  <section aria-labelledby="body-label">
+   <div class="field-heading"><h2 id="body-label">Article body</h2><button data-copy="body" disabled>Copy formatted body</button></div>
+   <p>The body copy contains text and links. To include the diagram, <a href="./document-journey.png" download>download the image</a> and upload it after the introduction, just before Level 1.</p>
+   <details><summary>Diagram caption and image description</summary><p><strong>Caption:</strong> The application prepares pages and reads their contents in separate stages. Each stage has workers to do the processing and a queue for work that has to wait.</p><p><strong>Alt text:</strong> An uploaded PDF is prepared so its text and table regions can be located. An AI model then reads those regions and returns their contents. Work can wait in a queue before either stage.</p></details>
+   <p id="copy-status" role="status">Loading article…</p>
+   <div id="body" tabindex="0" aria-label="Formatted article body"></div>
+  </section>
+ </main>
+</body>
+</html>

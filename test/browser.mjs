@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {checkNewsletter} from './newsletter.mjs';
 import {checkGame} from './game-browser.mjs';
+import {checkSharing} from './sharing-browser.mjs';
 import {writeFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({headless:true,channel:'chrome'}),errors=[];
@@ -9,8 +10,8 @@ try{
   const page=await browser.newPage();await page.route('https://buildwithaws.substack.com/embed?*',r=>r.abort());await page.goto('http://127.0.0.1:4174/');await page.evaluate(()=>document.fonts.ready);
   const image=await page.evaluate(async()=>{const {drawCard}=await import('/cards.js');return drawCard(document.createElement('canvas'),{preview:true}).toDataURL('image/png').split(',')[1];});
   await writeFile(new URL('../public/social-preview.png',import.meta.url),Buffer.from(image,'base64'));console.log('Built 1200 × 630 social preview.');
- }else if(process.argv.includes('--newsletter-only')){await checkNewsletter(browser);}else if(process.argv.includes('--game-only')){await checkGame(browser);}else{
- await checkNewsletter(browser);await checkGame(browser);
+ }else if(process.argv.includes('--sharing-only')){await checkSharing(browser);}else if(process.argv.includes('--newsletter-only')){await checkNewsletter(browser);}else if(process.argv.includes('--game-only')){await checkGame(browser);}else{
+ await checkNewsletter(browser);await checkGame(browser);await checkSharing(browser);
  const page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'});page.on('pageerror',e=>errors.push(e.stack));
  await page.route('https://buildwithaws.substack.com/embed?*',route=>route.abort());
  await page.goto('http://127.0.0.1:4174/',{waitUntil:'domcontentloaded'});
@@ -52,7 +53,7 @@ try{
  await page.screenshot({path:'/private/tmp/ocr-rush-scale.png',fullPage:true});
  await page.locator('#next').click();assert.ok(await page.locator('#graduation').isVisible());assert.match(await page.locator('#progress-summary').innerText(),/6 of 6/);await page.locator('#share-campaign').click();assert.match(await page.locator('#share-caption').inputValue(),/all six levels/);await page.keyboard.press('Escape');
  const download=page.waitForEvent('download');await page.locator('#save').click();await (await download).saveAs('/private/tmp/ocr-rush-card.png');
- await page.locator('#share').click();assert.match(await page.locator('#dialog-body').innerText(),/local preview/);assert.match(await page.locator('#share-caption').inputValue(),/10,000\/10,000 valid PDFs/);await page.keyboard.press('Escape');
+ await page.locator('#share').click();assert.ok((await page.locator('#share-link').inputValue()).startsWith('https://www.marcelops.com/ocr-rush/'));assert.match(await page.locator('#share-caption').inputValue(),/10,000\/10,000 valid PDFs/);await page.keyboard.press('Escape');
  await page.locator('#architecture').click();assert.match(await page.locator('#dialog-body').innerText(),/SQS/);assert.match(await page.locator('#dialog-body').innerText(),/100 ms/);assert.match(await page.locator('#dialog-body').innerText(),/node autoscaler/);await page.keyboard.press('Escape');
  await page.locator('#assumptions').click();assert.match(await page.locator('#dialog-body').innerText(),/not a measured/);assert.match(await page.locator('#dialog-body').innerText(),/60-second minimum/);await page.keyboard.press('Escape');
  await page.locator('[data-batch="1"]').click();assert.ok(await page.locator('#next').isDisabled());assert.ok(await page.locator('#graduation').isHidden());
