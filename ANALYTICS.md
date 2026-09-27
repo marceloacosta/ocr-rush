@@ -10,7 +10,8 @@ ID, with an optional Actions variable of the same name overriding it. An empty
 ID disables injection; malformed nonempty values fail before output is cleared.
 The runtime excludes localhost and preview domains.
 
-GA4 initializes once and owns initial and enhanced history page views. Do not
+GA4 initializes once and sends initial page views. Shared enhanced history
+page views are disabled because Substack already tracks its own routes. Do not
 add another tag or send manual page_view events. The runtime is kept identical
 to the homepage and course copies; the shared verification suite checks this.
 
@@ -41,3 +42,9 @@ Run existing tests with `npm test`. Run `npm run test:deployment` with
 sending automated test events to production. After deployment verify one
 page view, one CTA event, `_gl` decoration, and matching `cid`/`sid` on the
 actual Substack destination.
+
+The shared property marks `build_with_aws_click` as a publication-referral key
+event, once per event, with no default monetary value. It remains separate
+from completed subscriptions. If a future first-party site adopts SPA routing,
+track its route views once in that application; keep shared enhanced history
+tracking off to avoid duplicating Substack article views.
