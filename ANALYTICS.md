@@ -27,7 +27,7 @@ to test the standard top-level cross-domain journey. Native Substack events
 must be verified on the actual publication.
 
 Existing UTMs and link destinations are preserved. For ordinary same-tab
-publication clicks, a bounded 300 ms callback allows event dispatch while
+publication clicks, a bounded 1000 ms callback allows event dispatch while
 Google's click listener decorates the URL. No custom identity is transmitted.
 
 GA4's domain list must contain exact matches for `marcelops.com`,
