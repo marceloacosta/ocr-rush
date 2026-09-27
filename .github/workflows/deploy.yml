@@ -25,6 +25,7 @@ jobs:
       - name: Build the static site
         run: npm run build
         env:
+          GA4_MEASUREMENT_ID: ${{ vars.GA4_MEASUREMENT_ID || 'G-YLB0CNYQ8Z' }}
           PUBLIC_URL: https://www.marcelops.com/ocr-rush/
       - uses: actions/upload-pages-artifact@v4
         with:
